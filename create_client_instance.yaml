@@ -1,0 +1,52 @@
+Description: This templace is to create RHEL based EC2 instance and setup for chef bootstrapping to work out of the box from a workstation.
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names.
+    Type: String
+    Default: Testing
+
+  VPC:
+    Description: VPC that the instance will attach to.
+    Type: AWS::EC2::VPC
+    ConstraintDescription: Must be a excisting VPC.
+
+  PrivateSubnet:
+    Description: Private subnet
+    Type: AWS::EC2::Subnet
+    ConstraintDescription: Must be a excisting Subnet.
+
+  EC2Ami:
+    Type: String
+    Default: ami-0057d8e6fb0692b80
+    Description: Allowed Ami's for EC2 Instnace.
+
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: The size of the EC2 virtual machine.
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Keyname value for EC2 instance. 
+    ConstraintDescription: Must be a excisting EC2 KeyPair. 
+
+Resources:
+  ClientInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      VpcId: !Ref VPC
+      GroupDescription: Allows SSH connection.
+      GroupName: SSH SG
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+
+  
