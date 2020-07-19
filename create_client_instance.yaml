@@ -1,6 +1,10 @@
 Description: This templace is to create RHEL based EC2 instance and setup for chef bootstrapping to work out of the box from a workstation.
 
 Parameters:
+  FullyQualifiedDomainName:
+    Type: String
+    Default: testing.client.com
+
   EnvironmentName:
     Description: An environment name that is prefixed to resource names.
     Type: String
@@ -8,21 +12,34 @@ Parameters:
 
   VPC:
     Description: VPC that the instance will attach to.
-    Type: AWS::EC2::VPC
+    Type: AWS::EC2::VPC::Id
     ConstraintDescription: Must be a excisting VPC.
 
   PrivateSubnet:
     Description: Private subnet
-    Type: AWS::EC2::Subnet
+    Type: AWS::EC2::Subnet::Id
     ConstraintDescription: Must be a excisting Subnet.
 
   EC2Ami:
     Description: Allowed Ami's for EC2 Instnace.
     Type: String
-    Default: ami-0057d8e6fb0692b80
+    Default: ami-f8586892
     
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Keyname value for EC2 instance. 
+    ConstraintDescription: Must be a excisting EC2 KeyPair.
 
-  InstanceType:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    ConstraintDescription: Must be a excisting security group.
+
+  WorkstationHost:
+    Description: The hostname to add in /etc/hosts
+    Type: String
+    Default: '172.31.91.121 workstation.example.com'
+
+  InstanceTypes:
     Description: The size of the EC2 virtual machine.
     Type: String
     Default: t2.micro
@@ -336,16 +353,11 @@ Parameters:
       - z1d.xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 
-  KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Keyname value for EC2 instance. 
-    ConstraintDescription: Must be a excisting EC2 KeyPair. 
-
 Resources:
   ClientInstance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: !Ref InstanceType
+      InstanceType: !Ref InstanceTypes
       ImageId: !Ref EC2Ami
       KeyName: !Ref KeyPairName
       NetworkInterfaces:
@@ -354,35 +366,37 @@ Resources:
         AssociatePublicIpAddress: 'true'
         DeviceIndex: '0'
         GroupSet:
-        - Ref: SSHSecurityGroup
+        - Ref: SecurityGroup
       BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: 10
+      - DeviceName: /dev/sda1
+        Ebs:
+          VolumeSize: 10
       Tags:
         - Key: Name
-          Value: Workstation
-
-  SSHSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties: 
-      VpcId: !Ref VPC
-      GroupDescription: Allows SSH connection.
-      GroupName: SSH SG
-      SecurityGroupIngress:
-      - CidrIp: 0.0.0.0/0
-        FromPort: 22
-        IpProtocol: tcp
-        ToPort: 22
+          Value: RHEL Client Test
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          privateIp=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+          clientfqdn=${FullyQualifiedDomainName}
+          host="$privateIp $clientfqdn"
+          hostname $clientfqdn
+          echo $host >> /etc/hosts
+          echo ${WorkstationHost} >> /etc/hosts
 
 Outputs:
   VPC:
-    Description: A reference to the created VPC
+    Description: A reference to the created VPC.
     Value: !Ref VPC
 
   PrivateSubnet:
-    Description: Private subnet
+    Description: Private subnet used.
     Value: !Ref PrivateSubnet
+
+  KeyPairName:
+    Description: A reference to the created VPC.
+    Value: !Ref KeyPairName
   
-  PrivateIpAddress:
-   Value: !GetAtt ClientInstance.PrivateIpAddress
+  HostPriateIpAndFqdn:
+    Description: Private IP and domain name used.
+    Value: !Join [' ', [!GetAtt ClientInstance.PrivateIp, !Ref FullyQualifiedDomainName]]
