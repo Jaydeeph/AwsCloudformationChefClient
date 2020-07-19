@@ -5,7 +5,7 @@
 node {
   stage("Create Cloudformation Stack") {
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'aws-key', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-        AWS("--region=eu-west-1 s3 ls")
+        AWS("cloudformation create-stack --stack-name chef-client-test --template-body file://create_client_instance.yaml --region 'us-east-1'")
     }
   }
 } 
